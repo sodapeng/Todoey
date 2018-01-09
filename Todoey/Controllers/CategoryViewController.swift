@@ -8,21 +8,30 @@
 
 import UIKit
 import CoreData
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
 
     var categoryArray = [Category]()
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     override func viewDidLoad() {
         super.viewDidLoad()
         loadCategories()
+        tableView.rowHeight = 80.0
+        tableView.separatorStyle = .none
 
     }
     //MARK: - TableView Datasource Methods
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
-        
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+
         cell.textLabel?.text = categoryArray[indexPath.row].name
+        if let cellColor = categoryArray[indexPath.row].color {
+            cell.backgroundColor = UIColor(hexString: cellColor)
+        }
+        else {
+            cell.backgroundColor = UIColor(hexString: "1D9BF6")
+        }
         
         return cell
     }
@@ -52,7 +61,7 @@ class CategoryViewController: UITableViewController {
         }catch {
             print("Error in save category \(error)")
         }
-        tableView.reloadData()
+        
     }
     
     //MARK: - Add New Categories
@@ -62,8 +71,10 @@ class CategoryViewController: UITableViewController {
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
             let newData = Category(context: self.context)
             newData.name = textField.text!
+            newData.color = UIColor.randomFlat.hexValue()
             self.categoryArray.append(newData)
             self.saveCategories()
+            self.tableView.reloadData()
 
         }
         alert.addTextField { (alertTextField) in
@@ -74,6 +85,12 @@ class CategoryViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
         
     }
+    //MARK: - Delete Category
+    override func updateModel(at indexPath: IndexPath) {
+        context.delete(self.categoryArray[indexPath.row])
+        categoryArray.remove(at: indexPath.row)
+        saveCategories()
+    }
     
 
     func loadCategories(with request: NSFetchRequest<Category> = Category.fetchRequest()) {
@@ -83,10 +100,9 @@ class CategoryViewController: UITableViewController {
             print("Error fetching data from context \(error)")
         }
     }
-    
-    
-    
 
-    
-    
 }
+
+//MARK: - Swipe Cell Delegate Methods
+
+

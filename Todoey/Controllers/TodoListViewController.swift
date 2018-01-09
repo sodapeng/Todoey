@@ -8,8 +8,9 @@
 
 import UIKit
 import CoreData
+import ChameleonFramework
 
-class TodoListViewController: UITableViewController {
+class TodoListViewController: SwipeTableViewController {
 
     var itemArray = [Item]()
     var selectedCategory : Category? {
@@ -17,18 +18,46 @@ class TodoListViewController: UITableViewController {
             loadItems()
         }
     }
-
+    @IBOutlet weak var searchBar: UISearchBar!
+    
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        tableView.rowHeight = 80.0
+        tableView.separatorStyle = .none
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        if let colorHex = selectedCategory?.color {
+            title = selectedCategory!.name
+            
+            guard let navBar = navigationController?.navigationBar else {fatalError("Navigation controller dose not exist")}
+            if let navBarColor = UIColor(hexString: colorHex) {
+                searchBar.barTintColor = navBarColor
+                navBar.barTintColor = navBarColor
+                navBar.largeTitleTextAttributes = [NSAttributedStringKey.foregroundColor: ContrastColorOf(navBarColor, returnFlat: true)]
+                navBar.tintColor = ContrastColorOf(navBarColor, returnFlat: true)
+            }
+
+        }
     }
     
     //MARK - TableView Datasource Methods
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
+        
         let curItem = itemArray[indexPath.row]
         cell.textLabel?.text = curItem.title
+        if let color = UIColor(hexString: selectedCategory!.color!)?.darken(byPercentage:CGFloat(indexPath.row) / CGFloat(itemArray.count)) {
+            cell.backgroundColor = color
+            cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+        }
+        else {
+            
+        }
+        
+        
         cell.accessoryType = curItem.done ? .checkmark : .none
         
         return cell
@@ -42,7 +71,7 @@ class TodoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         saveItems()
-
+        tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
         
     }
@@ -59,6 +88,7 @@ class TodoListViewController: UITableViewController {
             newData.parentCategory = self.selectedCategory
             self.itemArray.append(newData)
             self.saveItems()
+            self.tableView.reloadData()
 
         }
         alert.addTextField { (alertTextField) in
@@ -70,6 +100,13 @@ class TodoListViewController: UITableViewController {
         
     }
     
+    //MARK: - Delete category
+    override func updateModel(at indexPath: IndexPath) {
+        context.delete(self.itemArray[indexPath.row])
+        itemArray.remove(at: indexPath.row)
+        saveItems()
+    }
+    
     func saveItems() {
 
         do {
@@ -77,7 +114,7 @@ class TodoListViewController: UITableViewController {
         } catch {
             print("Error saving context \(error)")
         }
-        tableView.reloadData()
+        
     }
     
     func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil ) {
@@ -118,4 +155,6 @@ extension TodoListViewController: UISearchBarDelegate {
         }
     }
 }
+
+
 
